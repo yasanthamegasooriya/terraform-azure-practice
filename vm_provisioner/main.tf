@@ -7,17 +7,7 @@ provider "azurerm" {
   }
 }
 
-variable "vnet_cidr_block" {
 
-}
-
-variable "subent_cidr_block" {
-
-}
-
-variable "env_prefix" {
-
-}
 /*
 locals {
   custom_data = <<CUSTOM_DATA
@@ -127,6 +117,7 @@ data "template_file" "linux-vm-docker-setup" {
 */
 
 
+
 resource "azurerm_linux_virtual_machine" "tfvm" {
   name                = "${var.env_prefix}-vm"
   resource_group_name = azurerm_resource_group.rgtf.name
@@ -194,18 +185,3 @@ resource "azurerm_virtual_machine_extension" "vm-extension" {
 }
 */
 
-output "vnet_id" {
-  value = azurerm_virtual_network.vnettf.id
-}
-
-output "subnet_id" {
-  value = azurerm_subnet.vnettfsubenta.id
-}
-
-output "vm-private-ip" {
-  value = azurerm_linux_virtual_machine.tfvm.private_ip_address
-}
-
-output "vm-public-ip" {
-  value = azurerm_linux_virtual_machine.tfvm.public_ip_address
-}
