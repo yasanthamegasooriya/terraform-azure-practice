@@ -43,13 +43,7 @@ resource "azurerm_virtual_network" "vnettf" {
   }
 }
 
-resource "azurerm_subnet" "vnettfsubenta" {
-  name                 = "${var.env_prefix}-subneta"
-  virtual_network_name = azurerm_virtual_network.vnettf.name
-  address_prefixes     = [var.subent_cidr_block]
-  resource_group_name  = azurerm_resource_group.rgtf.name
 
-}
 resource "azurerm_public_ip" "public_ip_address" {
   name                = "${var.env_prefix}-public_ip_address"
   resource_group_name = azurerm_resource_group.rgtf.name
