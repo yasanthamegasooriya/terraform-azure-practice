@@ -13,3 +13,7 @@ variable "subent_cidr_block" {
 variable "rg-name" {
   
 }
+
+variable "subnet-name" {
+  
+}

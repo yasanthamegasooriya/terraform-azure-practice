@@ -30,8 +30,8 @@ sudo docker run -p 8080:80 nginx
 }
 */
 resource "azurerm_resource_group" "rgtf" {
-  name     = "rgtf"
-  location = "West Europe"
+  name     = var.rg_name
+  location = var.location
 }
 resource "azurerm_virtual_network" "vnettf" {
   name                = "${var.env_prefix}-vnet"
@@ -43,139 +43,18 @@ resource "azurerm_virtual_network" "vnettf" {
   }
 }
 
-
-resource "azurerm_public_ip" "public_ip_address" {
-  name                = "${var.env_prefix}-public_ip_address"
-  resource_group_name = azurerm_resource_group.rgtf.name
-  location            = azurerm_resource_group.rgtf.location
-  allocation_method   = "Static"
-
-  tags = {
-    environment = "${var.env_prefix}"
-  }
+module "subnet_creation" {
+  source = "./modules/subnet"
+  subnet-name = "${var.env_prefix}-subnet"
+  rg-name = azurerm_resource_group.rgtf.name
+  subent_cidr_block = var.subnet_cidr_block
+  env_prefix = var.env_prefix
+  vnet-name = azurerm_virtual_network.vnettf.name
 }
-
-resource "azurerm_network_interface" "tfinterface" {
-  name                = "${var.env_prefix}-interface"
-  location            = azurerm_resource_group.rgtf.location
-  resource_group_name = azurerm_resource_group.rgtf.name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.vnettfsubenta.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.public_ip_address.id
-
-  }
+module "vm_creation" {
+  source = "./modules/webserver"
+  env_prefix = var.env_prefix
+  location = azurerm_resource_group.rgtf.location
+  rg_name = azurerm_resource_group.rgtf.name
+  subnet_id = module.subnet_creation.subneta.id
 }
-
-
-resource "azurerm_network_security_group" "vm-nsg" {
-  name                = "${var.env_prefix}-nsg"
-  location            = azurerm_resource_group.rgtf.location
-  resource_group_name = azurerm_resource_group.rgtf.name
-}
-
-resource "azurerm_network_security_rule" "vm-nsg-rule-1" {
-  name                        = "${var.env_prefix}-nsr-1"
-  priority                    = 100
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  destination_port_range      = "22"
-  source_address_prefix       = "*"
-  destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.rgtf.name
-  network_security_group_name = azurerm_network_security_group.vm-nsg.name
-}
-
-
-resource "azurerm_network_security_rule" "vm-nsg-rule-2" {
-  name                        = "${var.env_prefix}-nsr-2"
-  priority                    = 101
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  destination_port_range      = "8080"
-  source_address_prefix       = "*"
-  destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.rgtf.name
-  network_security_group_name = azurerm_network_security_group.vm-nsg.name
-}
-/*
-data "template_file" "linux-vm-docker-setup" {
-  template = file("docker_install.sh")
-}
-*/
-
-
-
-resource "azurerm_linux_virtual_machine" "tfvm" {
-  name                = "${var.env_prefix}-vm"
-  resource_group_name = azurerm_resource_group.rgtf.name
-  location            = azurerm_resource_group.rgtf.location
-  size                = "Standard_F2"
-  admin_username      = "yasantha"
-  network_interface_ids = [
-    azurerm_network_interface.tfinterface.id,
-  ]
-  admin_password                  = "Yasantha@1995"
-  disable_password_authentication = false
-
-  os_disk {
-    caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
-  }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "16.04-LTS"
-    version   = "latest"
-  }
-
-  connection {
-  type = "ssh"
-  host = self.public_ip_address
-  user = "yasantha"
-  password = "Yasantha@1995"
-  }
-
-  provisioner "file" {
-    source="docker_install.sh"
-    destination = "/home/yasantha/docker_install.sh"
-  }
-  provisioner "remote-exec" {
-    script = file("docker_install.sh")    
-  }
-  //custom_data = base64encode(data.template_file.linux-vm-docker-setup.rendered)
-  //custom_data = filebase64("./docker_install.tpl")
-  //user_data = file("./docker_install.sh")
-}
-
-resource "azurerm_network_interface_security_group_association" "nsg-vm-as" {
-  network_interface_id      = azurerm_network_interface.tfinterface.id
-  network_security_group_id = azurerm_network_security_group.vm-nsg.id
-
-}
-/*
-resource "azurerm_virtual_machine_extension" "vm-extension" {
-  name                 = "hostname"
-  virtual_machine_id   = azurerm_linux_virtual_machine.tfvm.id
-  publisher            = "Microsoft.Azure.Extensions"
-  type                 = "CustomScript"
-  type_handler_version = "2.0"
-
-
-  settings = <<SETTINGS
-  {
-  "fileUris": ["https://sag.blob.core.windows.net/sagcont/docker_install.sh"],
-    "commandToExecute": "sh docker_install.sh"
-  }
-              SETTINGS
-
-}
-*/
-
