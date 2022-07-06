@@ -3,3 +3,4 @@
 **/.terraform*
 **/terraform.tf.vars
 **/terraform.tfvars
+**/idea/
