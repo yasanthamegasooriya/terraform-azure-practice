@@ -17,25 +17,14 @@ data "azurerm_kubernetes_service_versions" "current" {
   include_preview = false
 }
 
-resource "azurerm_virtual_network" "aks-rg" {
-    name = "${var.prefix}-vnet"
-    location = azurerm_resource_group.aks-rg.location
-    resource_group_name = azurerm_resource_group.aks-rg.name
-    address_space = [var.vnet_cidr_block]
+module "network_and_subnet" {
+  source = "./modules/network"
+  prefix = var.prefix
+  location = azurerm_resource_group.aks-rg.location
+  rg_name = azurerm_resource_group.aks-rg.name
+  vnet_cidr_block = var.vnet_cidr_block
+  subnet_cidr_block = var.subnet_cidr_block
 }
-resource "azurerm_subnet" "aks-subent" {
-    name = "${var.prefix}-subnet"
-    resource_group_name = azurerm_resource_group.aks-rg.name
-    virtual_network_name = azurerm_virtual_network.aks-rg.name
-    address_prefixes = [var.subnet_cidr_block]
-  
-}
-
-# resource "azuread_group" "aks-administrator" {
-# #  name = "${azurerm_resource_group.aks-rg.name}-cluster-administrator"
-#   display_name = "${azurerm_resource_group.aks-rg.name}-cluster-administrator"
-#   description = "Azure AKS Kubernetes administrators for the ${azurerm_resource_group.aks-rg.name}-cluster."
-# }
 
 resource "azurerm_log_analytics_workspace" "insights" {
   name                = "${var.prefix}-logs"
@@ -43,68 +32,13 @@ resource "azurerm_log_analytics_workspace" "insights" {
   resource_group_name = azurerm_resource_group.aks-rg.name
   retention_in_days   = 30
 }
-
-resource "azurerm_kubernetes_cluster" "aks-cluster" {
-  name = "${var.prefix}-cluster"
+module "aks" {
+  source = "./modules/aks"
+  prefix = var.prefix
   location = azurerm_resource_group.aks-rg.location
-  resource_group_name = azurerm_resource_group.aks-rg.name
-  dns_prefix = "${azurerm_resource_group.aks-rg.name}-cluster"
-  kubernetes_version = data.azurerm_kubernetes_service_versions.current.latest_version
-  
-  default_node_pool{
+  rg_name = azurerm_resource_group.aks-rg.name
+  latest_version = data.azurerm_kubernetes_service_versions.current.latest_version
+  ssh_public_key = var.ssh_public_key
 
-    name = "defaultpool"
-    vm_size = "Standard_DS2_v2"
-    orchestrator_version = data.azurerm_kubernetes_service_versions.current.latest_version
-#    availability_zones   = [1, 2, 3]
-    enable_auto_scaling  = true
-    max_count            = 3
-    min_count            = 1
-    os_disk_size_gb      = 30
-    type                 = "VirtualMachineScaleSets"
-#    role_based_access_control_enabled = true
-    node_labels = {
-      "nodepool-type"    = "system"
-      "environment"      = "dev"
-      "nodepoolos"       = "linux"
-      "app"              = "system-apps" 
-    }
-    tags = {
-      "nodepool-type"    = "system"
-      "environment"      = "dev"
-      "nodepoolos"       = "linux"
-      "app"              = "system-apps" 
-   } 
-   
-  }
-    identity {
-    type = "SystemAssigned"
-   }
-  #  addon_profile {
-  #   azure_policy {enabled =  true}
-  #   oms_agent {
-  #     enabled =  true
-  #     log_analytics_workspace_id = azurerm_log_analytics_workspace.insights.id
-  #   }
-  #   }
-  
-  #   role_based_access_control {
-  #   enabled = true
-  #   azure_active_directory {
-  #     managed = true
-  #     admin_group_object_ids = [azuread_group.aks_administrators.id]
-  #   }
-  # }
-  
-    linux_profile {
-    admin_username = "ubuntu"
-    ssh_key {
-      key_data = file(var.ssh_public_key)
-    }
-  }
-  
-    network_profile {
-    network_plugin = "azure"
-    load_balancer_sku = "standard"
-  }
 }
+
