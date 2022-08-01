@@ -7,17 +7,6 @@ provider "azurerm" {
   }
 }
 
-variable "vnet_cidr_block" {
-
-}
-
-variable "subent_cidr_block" {
-
-}
-
-variable "env_prefix" {
-
-}
 /*
 locals {
   custom_data = <<CUSTOM_DATA
@@ -41,7 +30,7 @@ sudo docker run -p 8080:80 nginx
 */
 resource "azurerm_resource_group" "rgtf" {
   name     = "rgtf"
-  location = "West Europe"
+  location = "East Asia"
 }
 resource "azurerm_virtual_network" "vnettf" {
   name                = "${var.env_prefix}-vnet"
@@ -70,7 +59,15 @@ resource "azurerm_public_ip" "public_ip_address" {
     environment = "${var.env_prefix}"
   }
 }
+# resource "tls_private_key" "ssh_pem" {
+#   algorithm = "RSA"
+#   rsa_bits  = 4096
+# }
 
+data "azurerm_ssh_public_key" "public_key" {
+  name                = "vm1-key"
+  resource_group_name = "existing_rg"
+}
 resource "azurerm_network_interface" "tfinterface" {
   name                = "${var.env_prefix}-interface"
   location            = azurerm_resource_group.rgtf.location
@@ -145,14 +142,18 @@ resource "azurerm_linux_virtual_machine" "tfvm" {
   name                = "${var.env_prefix}-vm"
   resource_group_name = azurerm_resource_group.rgtf.name
   location            = azurerm_resource_group.rgtf.location
-  size                = "Standard_F2"
+  size                = "Standard_DS1_v2"
   admin_username      = "yasantha"
   network_interface_ids = [
     azurerm_network_interface.tfinterface.id,
   ]
-  admin_password                  = "Yasantha@1995"
-  disable_password_authentication = false
+  #admin_password                  = "Yasantha@1995"
+  disable_password_authentication = true
 
+  admin_ssh_key {
+    username   = "yasantha"
+    public_key = data.azurerm_ssh_public_key.public_key.public_key
+  }
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
@@ -192,18 +193,3 @@ resource "azurerm_virtual_machine_extension" "vm-extension" {
 }
 */
 
-output "vnet_id" {
-  value = azurerm_virtual_network.vnettf.id
-}
-
-output "subnet_id" {
-  value = azurerm_subnet.vnettfsubenta.id
-}
-
-output "vm-private-ip" {
-  value = azurerm_linux_virtual_machine.tfvm.private_ip_address
-}
-
-output "vm-public-ip" {
-  value = azurerm_linux_virtual_machine.tfvm.public_ip_address
-}

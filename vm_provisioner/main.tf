@@ -41,7 +41,7 @@ sudo docker run -p 8080:80 nginx
 */
 resource "azurerm_resource_group" "rgtf" {
   name     = "rgtf"
-  location = "West Europe"
+  location = "East Asia"
 }
 resource "azurerm_virtual_network" "vnettf" {
   name                = "${var.env_prefix}-vnet"
@@ -126,18 +126,23 @@ data "template_file" "linux-vm-docker-setup" {
 }
 */
 
-
+data "azurerm_ssh_public_key" "pem_key"{
+  name = "vm1-key"
+  resource_group_name = azurerm_resource_group.rgtf.location
+}
 resource "azurerm_linux_virtual_machine" "tfvm" {
   name                = "${var.env_prefix}-vm"
   resource_group_name = azurerm_resource_group.rgtf.name
   location            = azurerm_resource_group.rgtf.location
   size                = "Standard_F2"
   admin_username      = "yasantha"
+  admin_ssh_key {
+   username = "yasantha"
+   public_key = data.azurerm_ssh_public_key.pem_key
+}
   network_interface_ids = [
     azurerm_network_interface.tfinterface.id,
   ]
-  admin_password                  = "Yasantha@1995"
-  disable_password_authentication = false
 
   os_disk {
     caching              = "ReadWrite"
@@ -208,4 +213,8 @@ output "vm-private-ip" {
 
 output "vm-public-ip" {
   value = azurerm_linux_virtual_machine.tfvm.public_ip_address
+}
+
+output "vm_key_data" {
+  value=data.azurerm_ssh_public_key.pem_key
 }
