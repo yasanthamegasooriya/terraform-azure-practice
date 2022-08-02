@@ -2,10 +2,7 @@ terraform {
   required_version = ">= 0.12"
 }
 
-provider "azurerm" {
-  features {
-  }
-}
+
 
 /*
 locals {
@@ -28,29 +25,9 @@ sudo docker run -p 8080:80 nginx
   CUSTOM_DATA
 }
 */
-resource "azurerm_resource_group" "rgtf" {
-  name     = "rgtf"
-  location = "East Asia"
-}
-resource "azurerm_virtual_network" "vnettf" {
-  name                = "${var.env_prefix}-vnet"
-  location            = azurerm_resource_group.rgtf.location
-  address_space       = [var.vnet_cidr_block]
-  resource_group_name = azurerm_resource_group.rgtf.name
-  tags = {
-    "Name" = "${var.env_prefix}-vnet"
-  }
-}
-
-resource "azurerm_subnet" "vnettfsubenta" {
-  name                 = "${var.env_prefix}-subneta"
-  virtual_network_name = azurerm_virtual_network.vnettf.name
-  address_prefixes     = [var.subent_cidr_block]
-  resource_group_name  = azurerm_resource_group.rgtf.name
-
-}
 resource "azurerm_public_ip" "public_ip_address" {
-  name                = "${var.env_prefix}-public_ip_address"
+  count               = var.number_of_vms
+  name                = "${var.env_prefix}-public_ip_address-${count.index}"
   resource_group_name = azurerm_resource_group.rgtf.name
   location            = azurerm_resource_group.rgtf.location
   allocation_method   = "Static"
@@ -69,7 +46,8 @@ data "azurerm_ssh_public_key" "public_key" {
   resource_group_name = "existing_rg"
 }
 resource "azurerm_network_interface" "tfinterface" {
-  name                = "${var.env_prefix}-interface"
+  count               = var.number_of_vms
+  name                = "${var.env_prefix}-interface-${count.index}"
   location            = azurerm_resource_group.rgtf.location
   resource_group_name = azurerm_resource_group.rgtf.name
 
@@ -77,7 +55,7 @@ resource "azurerm_network_interface" "tfinterface" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.vnettfsubenta.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.public_ip_address.id
+    public_ip_address_id          = azurerm_public_ip.public_ip_address[count.index].id
 
   }
 }
@@ -139,13 +117,14 @@ data "template_file" "linux-vm-docker-setup" {
 
 
 resource "azurerm_linux_virtual_machine" "tfvm" {
-  name                = "${var.env_prefix}-vm"
+  count               = var.number_of_vms
+  name                = "${var.env_prefix}-vm-${count.index}"
   resource_group_name = azurerm_resource_group.rgtf.name
   location            = azurerm_resource_group.rgtf.location
   size                = "Standard_DS1_v2"
   admin_username      = "yasantha"
   network_interface_ids = [
-    azurerm_network_interface.tfinterface.id,
+    azurerm_network_interface.tfinterface[count.index].id,
   ]
   #admin_password                  = "Yasantha@1995"
   disable_password_authentication = true
@@ -170,7 +149,8 @@ resource "azurerm_linux_virtual_machine" "tfvm" {
 }
 
 resource "azurerm_network_interface_security_group_association" "nsg-vm-as" {
-  network_interface_id      = azurerm_network_interface.tfinterface.id
+  count= var.number_of_vms
+  network_interface_id      = azurerm_network_interface.tfinterface[count.index].id
   network_security_group_id = azurerm_network_security_group.vm-nsg.id
 
 }

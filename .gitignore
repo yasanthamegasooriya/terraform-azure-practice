@@ -5,3 +5,4 @@
 **/terraform.tf.vars
 **/terraform.tfvars
 **/idea/
+**/*.pem

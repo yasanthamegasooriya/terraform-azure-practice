@@ -7,10 +7,10 @@ output "subnet_id" {
 }
 
 output "vm-private-ip" {
-  value = azurerm_linux_virtual_machine.tfvm.private_ip_address
+  value = azurerm_linux_virtual_machine.tfvm.*.private_ip_address
 }
 
 output "vm-public-ip" {
-  value = azurerm_linux_virtual_machine.tfvm.public_ip_address
+  value = azurerm_linux_virtual_machine.tfvm.*.public_ip_address
 }
 
