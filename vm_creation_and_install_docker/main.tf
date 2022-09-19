@@ -139,9 +139,9 @@ resource "azurerm_linux_virtual_machine" "tfvm" {
   }
 
   source_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
+    publisher = "RedHat"
+    offer     = "RHEL"
+    sku       = "8"
     version   = "latest"
   }
   //custom_data = base64encode(data.template_file.linux-vm-docker-setup.rendered)
